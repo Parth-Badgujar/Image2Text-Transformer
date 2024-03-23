@@ -6,7 +6,6 @@ import torch.nn.functional as F
 class Image2TextTransformer(L.LightningModule):
     def __init__(self, nheads, num_encoder_layers, num_decoder_layers, dim_ff, patch_size, vocab_size):
         super().__init__()
-        self.h = self.w = 224
         self.vocab_size = vocab_size
         self.patch_size = patch_size
         self.dmodel = (patch_size * patch_size * 3)
@@ -34,7 +33,7 @@ class Image2TextTransformer(L.LightningModule):
         tgt_padding_mask = self.get_padding_mask(tgt)
         tgt = self.embeddimg(tgt)
         B, T, C = tgt.shape
-        tgt_mask = self.model.generate_square_subsequent_mask(T, device = self.device)
+        tgt_mask = (torch.ones(T, T).tril() == 0).to(self.device)
         out = self.model(src, tgt, tgt_key_padding_mask = tgt_padding_mask, tgt_mask = tgt_mask)
         out = self.proj(out)
         return out
@@ -46,7 +45,7 @@ class Image2TextTransformer(L.LightningModule):
         tgt_padding_mask = self.get_padding_mask(text_tokens)
         tgt = self.embeddimg(text_tokens)
         B, T, C = tgt.shape
-        tgt_mask = self.model.generate_square_subsequent_mask(T, device = self.device)
+        tgt_mask = (torch.ones(T, T).tril() == 0).to(self.device)
         out = self.model.decoder(tgt, img_embeds, tgt_key_padding_mask = tgt_padding_mask, tgt_mask = tgt_mask)
         out = self.proj(out)
         return out
