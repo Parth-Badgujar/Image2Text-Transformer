@@ -46,7 +46,7 @@ bpe = yttm.BPE(model = 'bpe.model')
 
 
 
-dataset = ImageCaptionDataset(PATH, image_names, image_text, max_len = MAX_LEN)
+dataset = ImageCaptionDataset(PATH, image_names, image_text, max_len = MAX_LEN, bpe_model = 'bpe.model')
 train_dl = torch.utils.data.DataLoader(dataset, batch_size = BATCH_SIZE, shuffle = True, num_workers = 2)
 
 
@@ -60,6 +60,7 @@ model = Image2TextTransformer(
 
 
 trainer = L.Trainer(max_epochs = config['EPOCHS'])
+model.train()
 trainer.fit(model, train_dl)
 
 

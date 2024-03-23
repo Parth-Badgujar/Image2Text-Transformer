@@ -1,3 +1,13 @@
+import argparse
+parser = argparse.ArgumentParser(description = "Generate captions for images")
+parser.add_argument("--images", type = str, help = "Path to the images")
+parser.add_argument("--temp", type = float, help = "Temperature for sampling")
+parser.add_argument("--model", type = str, help = 'Name of the pytorch model file', default = "ImageCaption.pt")
+parser.add_argument("--bpe", type = str, help = "Name of the BPE model", default = "bpe.model")
+args = parser.parse_args()
+images_path = args.images
+
+
 import torch
 import yaml
 import youtokentome as yttm
@@ -6,12 +16,7 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 import os
 from model import Image2TextTransformer
-import argparse
 
-parser = argparse.ArgumentParser(description = "Generate captions for images")
-parser.add_argument("--images", type = str, help = "Path to the image")
-args = parser.parse_args()
-images_path = args.images
 
 config = yaml.load(open("config.yaml", "r"), Loader = yaml.FullLoader)
 
@@ -33,30 +38,27 @@ model = Image2TextTransformer(
     vocab_size = VOCAB_SIZE
 )
 
-
-model.load_state_dict(torch.load("ImageCaption.pt"))
-
-
-bpe = yttm.BPE(model = 'bpe.model')
-
+try :
+    model.load_state_dict(torch.load(args.model))
+    model.eval()
+    bpe = yttm.BPE(model = args.bpe)
+except Exception as e  :
+    print("Error loading models :", e)
 
 @torch.inference_mode()
 def generate(img):
     ids = torch.LongTensor([[2]])
     img_embeds = model.encode_image(img)
     while True :
-        # print(bpe.decode([ids.tolist()[0][-1]])[0], end = '', flush  = True)
         new = model.decode_text(img_embeds, ids)[0,-1,:]
-        new = torch.argmax(F.softmax(new, -1))
-        ids = torch.cat([ids, new.unsqueeze(0).unsqueeze(0)], dim = 1)
+        new = torch.multinomial(F.softmax(new / args.temp, -1), 1) 
+        ids = torch.cat([ids, new.unsqueeze(0)], dim = 1)
         print(bpe.decode(ids.tolist())[0], end = '\r', flush=True)
         if new.item() == 3 :
             break
-    ids = ids.cpu()
-    # print(bpe.decode(ids.tolist())[0])
 
 for img in os.listdir(images_path) :
-    img_processed = T.functional.resize(torchvision.io.read_image(os.path.join(images_path, img)) / 255, (224, 224), antialias = True)
+    img_processed = T.functional.resize(torchvision.io.read_image(os.path.join(images_path, img)) / 255, (config['HEIGHT'], config["WIDTH"]), antialias = True)
     print("Generating for image: ", img)
     generate(img_processed.unsqueeze(0))
     print()
