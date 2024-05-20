@@ -1,4 +1,4 @@
-## Image2Text-Transformer 
+## Simmple BLIP
 
 * First we split the image into patches similar to `Vision-Transformer` and send it through the encoder which generate embeddings of the image
 * Then we decode the text autoregressively with the decoder where the encoded patches are `cross-attended` with text embeddings 
